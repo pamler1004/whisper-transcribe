@@ -23,25 +23,13 @@
 
 ## 📦 安装
 
-**要求**：macOS Apple Silicon（M1/M2/M3/M4，不支持 Intel Mac）· Python 3.12（推荐）· ffmpeg
+**一行命令搞定**（需要 macOS Apple Silicon + [Homebrew](https://brew.sh)）：
 
 ```bash
-# 1. clone 到 Claude Code skills 目录
-git clone https://github.com/pamler1004/whisper-transcribe.git ~/.claude/skills/whisper-transcribe
-
-# 2. 建 venv + 装依赖
-cd ~/.claude/skills/whisper-transcribe
-python3.12 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-
-# 3. 首次运行（会自动下载 large-v3 模型约 3GB）
-.venv/bin/python scripts/transcribe.py /path/to/audio.mp3
+git clone https://github.com/pamler1004/whisper-transcribe.git ~/.claude/skills/whisper-transcribe && ~/.claude/skills/whisper-transcribe/install.sh
 ```
 
-国内下载模型慢，先设镜像：
-```bash
-export HF_ENDPOINT=https://hf-mirror.com
-```
+`install.sh` 会自动装好 ffmpeg、Python 3.12、虚拟环境和所有 Python 依赖，无需手动操作。首次转录时会自动下载 large-v3 模型（约 3GB）；国内下载慢可先设镜像 `export HF_ENDPOINT=https://hf-mirror.com`。
 
 ## 🎯 用法
 
@@ -76,7 +64,7 @@ export HF_ENDPOINT=https://hf-mirror.com
 
 批量任务按文件**顺序处理**：每个文件依次转录、快速校对、写入源文件旁边，过程中报告 `n/总数` 进度。不要并发跑多个 large-v3 实例——它们会争抢 Apple Silicon 的统一内存与 Metal GPU，通常更慢，也可能造成内存压力。
 
-建议每批最多 **10 个文件或累计 3 小时音频**（以先到者为准）。M1 Pro 16GB 的实测速度约为 4.7x 实时，因此 3 小时音频的转录时间约 38 分钟，另加少量快速校对时间；更多内容请拆批处理。
+建议每批最多 **5 个文件**。M1 Pro 16GB 实测约 4.7x 实时；更多文件请拆批，分批报告进度。
 
 ### 支持的格式
 
