@@ -98,6 +98,16 @@ python3.12 -m venv .venv
 - **视频**：mp4 / mov / mkv / avi / flv / webm / m4v / wmv / ts / mts
 - **音频**：mp3 / wav / m4a / flac / aac / ogg / aiff / wma / opus 等（ffmpeg 能解的都行）
 
+## 📝 搭配 zimu-to-note（字幕转笔记）
+
+转录出的逐字稿是口语化的。想进一步变成结构化知识笔记（按逻辑主题重组、去口播填充词、保留金句、底部折叠原文对照），衔接姊妹项目 [zimu-to-note](https://github.com/pamler1004/zimu-to-note)：
+
+```bash
+git clone https://github.com/pamler1004/zimu-to-note.git ~/.claude/skills/zimu-to-note   # Codex 换 ~/.codex/skills/
+```
+
+装好后，对转录出的 md 说「整理这篇」「字幕转笔记」即可。
+
 ## ⚠️ 已知坑：模型下载
 
 下载 large-v3 可能撞两类问题，`install.sh` 已自动处理，了解即可：
