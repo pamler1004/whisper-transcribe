@@ -23,13 +23,27 @@
 
 ## 📦 安装
 
-**一行命令搞定**（需要 macOS Apple Silicon + [Homebrew](https://brew.sh)）：
+**推荐：一行命令**（macOS Apple Silicon + [Homebrew](https://brew.sh)）：
 
 ```bash
 git clone https://github.com/pamler1004/whisper-transcribe.git ~/.claude/skills/whisper-transcribe && ~/.claude/skills/whisper-transcribe/install.sh
 ```
 
-`install.sh` 会自动装好 ffmpeg、Python 3.12、虚拟环境和所有 Python 依赖，无需手动操作。首次转录时会自动下载 large-v3 模型（约 3GB）；国内下载慢可先设镜像 `export HF_ENDPOINT=https://hf-mirror.com`。
+`install.sh` 会自动装好 ffmpeg、Python 3.12、虚拟环境和所有 Python 依赖。首次转录时自动下载 large-v3 模型（约 3GB）；国内下载慢可先设镜像 `export HF_ENDPOINT=https://hf-mirror.com`。
+
+<details>
+<summary>手动安装（不想用脚本时）</summary>
+
+```bash
+git clone https://github.com/pamler1004/whisper-transcribe.git ~/.claude/skills/whisper-transcribe
+cd ~/.claude/skills/whisper-transcribe
+python3.12 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+```
+
+需要：macOS Apple Silicon · Python 3.12 · ffmpeg。
+
+</details>
 
 ## 🎯 用法
 
