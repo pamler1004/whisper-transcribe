@@ -1,1 +1,6 @@
 mlx-whisper==0.4.3
+# pin huggingface_hub 规避 1.22+ 的下载路径重写（PR#4394），它在部分网络下会让小文件
+# 下载报 FileMetadataError / LocalEntryNotFoundError。mlx-whisper 0.4.3 对本包无版本约束。
+huggingface_hub==1.21.0
+# silero-vad 为 --vad（长音频去静音、减少幻觉）用；不用 VAD 也能正常转录
+silero-vad==6.2.1

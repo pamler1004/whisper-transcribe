@@ -10,6 +10,7 @@
 - 🎬 **音视频通吃**：视频自动 ffmpeg 抽音频，不用手动转
 - 📝 **两种输出**：逐句逐字稿（`md`，每行一句）/ 带时间戳字幕（`srt`）
 - ✨ **快速上下文校对**：转录后通读一次，只修正能明确判断的错字、专名和断词；不改写口语。校对结果另存为「-校对版」文件，原始 ASR 稿保留
+- 🔇 **可选 VAD 去静音**：`--vad` 用 silero-vad 切掉静音段，适合会议 / podcast / 采访等长静音音频（提速 + 减少 "you you" 幻觉）；口播类默认不开
 - 🇨🇳 **中文友好**：中英混排识别好，标点、时间戳精确
 - 🔒 **完全本地**：音频不出机器，无 API 费用
 
@@ -35,7 +36,7 @@ git clone https://github.com/pamler1004/whisper-transcribe.git ~/.claude/skills/
 git clone https://github.com/pamler1004/whisper-transcribe.git ~/.codex/skills/whisper-transcribe && ~/.codex/skills/whisper-transcribe/install.sh
 ```
 
-`install.sh` 会自动装好 ffmpeg、Python 3.12、虚拟环境和所有 Python 依赖。首次转录时自动下载 large-v3 模型（约 3GB）；国内下载慢可先设镜像 `export HF_ENDPOINT=https://hf-mirror.com`。
+`install.sh` 会自动装好 ffmpeg、Python 3.12、虚拟环境和所有依赖，并**预下载 large-v3 模型（约 3GB）+ 离线加载验证**——跑完即可直接转录。下载走三级 fallback（huggingface.co 直连 → hf-mirror → curl 兜底），国内网络也能成；不想在安装时下模型可用 `SKIP_MODEL_DOWNLOAD=1 bash install.sh`。
 
 <details>
 <summary>手动安装（不想用脚本时）</summary>
@@ -69,6 +70,9 @@ python3.12 -m venv .venv
 
 # 指定语言
 .venv/bin/python scripts/transcribe.py audio.mp3 --language en
+
+# 长音频/会议录音去静音（减少幻觉、提速）
+.venv/bin/python scripts/transcribe.py meeting.mp3 --vad
 ```
 
 | 参数 | 说明 | 默认 |
@@ -77,6 +81,7 @@ python3.12 -m venv .venv
 | `--language` | `zh`/`en`/`ja`/`auto` 等 | `zh` |
 | `--format` | `md` / `srt` / `all` | `md` |
 | `--output-dir` | 输出目录 | 原文件同目录 |
+| `--vad` | silero VAD 去静音（长音频/会议推荐） | 关 |
 
 ### 作为 Skill（Claude Code / Codex）
 
@@ -93,17 +98,21 @@ python3.12 -m venv .venv
 - **视频**：mp4 / mov / mkv / avi / flv / webm / m4v / wmv / ts / mts
 - **音频**：mp3 / wav / m4a / flac / aac / ogg / aiff / wma / opus 等（ffmpeg 能解的都行）
 
-## ⚠️ 已知坑：huggingface_hub 1.23 下载报错
+## ⚠️ 已知坑：模型下载
 
-`huggingface_hub 1.23` 在线模式对小文件（config.json 等）的 head call 有 bug，会报 `FileMetadataError`——大文件能下、小文件没存。解决办法：
+下载 large-v3 可能撞两类问题，`install.sh` 已自动处理，了解即可：
 
+1. **huggingface_hub 1.22+ 小文件 bug**：1.22 重写了下载路径（PR#4394），在线下载会让 config.json 等小文件报 `FileMetadataError`。已通过 `requirements.txt` pin `huggingface_hub==1.21.0` 规避（mlx-whisper 对该包无版本约束）。
+2. **国内 hf_hub HEAD→xet 链不通**：任何版本都可能，症状 `LocalEntryNotFoundError`。`install.sh` 会自动 curl 兜底（hf-mirror 直下文件并构造 HF cache）。
+
+两条路都失败时手动补模型：
 ```bash
-# 用 curl 从镜像补 snapshot 目录下的小文件
-SNAP=~/.cache/huggingface/hub/models--mlx-community--whisper-large-v3-mlx/snapshots/*/
-curl -sL https://hf-mirror.com/mlx-community/whisper-large-v3-mlx/resolve/main/config.json -o "$SNAP/config.json"
-
-# 之后用离线模式运行（脚本默认已设 HF_HUB_OFFLINE=1）
-.venv/bin/python scripts/transcribe.py audio.mp3
+CACHE=~/.cache/huggingface/hub/models--mlx-community--whisper-large-v3-mlx
+HASH=49e6aa286ad60c14352c404340ded53710378a11
+SNAP="$CACHE/snapshots/$HASH"
+mkdir -p "$SNAP" "$CACHE/refs"; printf '%s' "$HASH" > "$CACHE/refs/main"
+curl -L -C - https://hf-mirror.com/mlx-community/whisper-large-v3-mlx/resolve/main/config.json -o "$SNAP/config.json"
+curl -L -C - https://hf-mirror.com/mlx-community/whisper-large-v3-mlx/resolve/main/weights.npz -o "$SNAP/weights.npz"
 ```
 
 ## 🧠 为什么不用 openai-whisper / faster-whisper？

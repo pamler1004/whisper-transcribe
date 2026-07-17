@@ -5,7 +5,7 @@ mlx-whisper 本地语音转文字（Apple Silicon Metal GPU 加速）。
 
 用法:
   transcribe.py <音频或视频文件> [--model MODEL] [--language LANG] \
-                [--format md|srt|all] [--output-dir DIR] [--output-name NAME]
+                [--format md|srt|all] [--output-dir DIR] [--output-name NAME] [--vad]
 """
 import argparse
 import os
@@ -63,6 +63,60 @@ def segments_to_srt(segments) -> str:
     return "\n".join(lines)
 
 
+def transcribe_with_vad(audio_path: str, model: str, language):
+    """silero-vad 检测语音段，逐段转录并按时间偏移拼回。
+
+    适合长音频/会议录音：跳过静音段（提速 + 减少 "you you you" 类幻觉）。
+    对口播类高密度语音收益小，故默认不开（由 --vad 触发）。
+    """
+    import numpy as np
+    import torch
+    from silero_vad import load_silero_vad, get_speech_timestamps
+    from mlx_whisper.audio import load_audio, SAMPLE_RATE
+
+    print("🔊 VAD 分析中...", file=sys.stderr)
+    wav = np.asarray(load_audio(audio_path, sr=SAMPLE_RATE))
+    vad = load_silero_vad()
+    ts = get_speech_timestamps(
+        torch.from_numpy(wav), vad, return_seconds=True,
+        min_speech_duration_ms=250, min_silence_duration_ms=500, speech_pad_ms=200,
+    )
+    if not ts:
+        return {"segments": [], "text": ""}
+
+    # 合并相邻近段（gap ≤ 1.0s）：减少 whisper 调用次数，保留自然停顿
+    merged = [dict(ts[0])]
+    for seg in ts[1:]:
+        if seg["start"] - merged[-1]["end"] <= 1.0:
+            merged[-1]["end"] = seg["end"]
+        else:
+            merged.append(dict(seg))
+
+    dur = wav.shape[0] / SAMPLE_RATE
+    speech = sum(s["end"] - s["start"] for s in merged)
+    print(f"   音频 {dur:.0f}s，VAD 识别语音 {speech:.0f}s（{speech/dur*100:.0f}%），分 {len(merged)} 段转录",
+          file=sys.stderr)
+
+    import mlx_whisper
+    all_segments = []
+    idx = 0
+    for i, seg in enumerate(merged, 1):
+        s_i = int(seg["start"] * SAMPLE_RATE)
+        e_i = int(seg["end"] * SAMPLE_RATE)
+        chunk = wav[s_i:e_i]
+        if len(chunk) < int(SAMPLE_RATE * 0.1):
+            continue
+        print(f"   [{i}/{len(merged)}] 转录 {seg['start']:.1f}–{seg['end']:.1f}s", file=sys.stderr)
+        res = mlx_whisper.transcribe(chunk, path_or_hf_repo=model, language=language)
+        for r in res.get("segments", []):
+            r["start"] = round(r["start"] + seg["start"], 3)
+            r["end"] = round(r["end"] + seg["start"], 3)
+            r["id"] = idx
+            all_segments.append(r)
+            idx += 1
+    return {"segments": all_segments, "text": "".join(s["text"] for s in all_segments)}
+
+
 def main():
     p = argparse.ArgumentParser(description="mlx-whisper 本地语音转文字")
     p.add_argument("input", help="音频或视频文件路径")
@@ -73,6 +127,8 @@ def main():
                    help="输出格式 (md=逐句逐字稿, srt=带时间戳字幕, all=md+srt)")
     p.add_argument("--output-dir", default=None, help="输出目录 (默认与输入同目录)")
     p.add_argument("--output-name", default=None, help="输出文件名 (不含扩展名)")
+    p.add_argument("--vad", action="store_true",
+                   help="开启 silero VAD 去静音（长音频/会议录音推荐；口播类默认无需）")
     args = p.parse_args()
 
     input_path = Path(args.input).resolve()
@@ -105,15 +161,26 @@ def main():
 
     try:
         import mlx_whisper
-        lang = args.language if args.language and args.language != "auto" else None
-        print(f"🎙️  转写中... 模型={args.model} 语言={args.language}", file=sys.stderr)
-        result = mlx_whisper.transcribe(
-            audio_path,
-            path_or_hf_repo=args.model,
-            language=lang,
-        )
     except ImportError:
         print("❌ mlx-whisper 未安装，请在 skill venv 里: pip install mlx-whisper", file=sys.stderr)
+        if temp_audio and os.path.exists(temp_audio):
+            os.unlink(temp_audio)
+        sys.exit(2)
+
+    lang = args.language if args.language and args.language != "auto" else None
+    print(f"🎙️  转写中... 模型={args.model} 语言={args.language}{' [VAD]' if args.vad else ''}",
+          file=sys.stderr)
+    try:
+        if args.vad:
+            result = transcribe_with_vad(str(audio_path), args.model, lang)
+        else:
+            result = mlx_whisper.transcribe(
+                audio_path,
+                path_or_hf_repo=args.model,
+                language=lang,
+            )
+    except ImportError:
+        print("❌ --vad 需要 silero-vad，请在 skill venv 里: pip install silero-vad", file=sys.stderr)
         sys.exit(2)
     finally:
         if temp_audio and os.path.exists(temp_audio):

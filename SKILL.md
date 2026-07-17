@@ -32,9 +32,10 @@ description: "本地语音转文字（Apple Silicon Metal GPU 加速）。把音
 
 ## 前置条件
 
-- ffmpeg（`/opt/homebrew/bin/ffmpeg`），视频抽音频用
-- large-v3 模型约 3GB，已下载到 `~/.cache/huggingface/hub/models--mlx-community--whisper-large-v3-mlx`，脚本默认 `HF_HUB_OFFLINE=1` 离线加载
-- 换其他模型首次下载：前缀 `HF_ENDPOINT=https://hf-mirror.com HF_HUB_OFFLINE=0` 运行一次
+- ffmpeg（视频抽音频用，`install.sh` 自动装）
+- large-v3 模型约 3GB。跑 `install.sh` 会自动预下载到 `~/.cache/huggingface/hub/models--mlx-community--whisper-large-v3-mlx`；脚本默认 `HF_HUB_OFFLINE=1` 离线加载
+- `requirements.txt` 已 pin `huggingface_hub==1.21.0`：1.22+ 重写了下载路径会让小文件报 FileMetadataError，必须 pin 回 1.21.0（mlx-whisper 对该包无版本约束，pin 任意版本都合法）
+- 换其他模型首次下载：前缀 `HF_ENDPOINT=https://hf-mirror.com HF_HUB_OFFLINE=0` 运行一次；若仍失败（国内 HEAD→xet 链不通），用 curl 手动补，见「常见问题」
 
 ## 用法
 
@@ -61,6 +62,7 @@ SKILL_DIR=$(ls -d ~/.claude/skills/whisper-transcribe ~/.codex/skills/whisper-tr
 | `--format` | `md` / `srt` / `all` | `md` |
 | `--output-dir` | 输出目录 | 原文件同目录 |
 | `--output-name` | 输出文件名（不含扩展名） | 同原文件名 |
+| `--vad` | 开启 silero VAD 去静音（长音频/会议录音推荐） | 关 |
 
 ### 视频直接转
 
@@ -136,7 +138,7 @@ HF_ENDPOINT=https://hf-mirror.com HF_HUB_OFFLINE=0 \
 
 - 只要 MD：原始 `测试.md` + 校对版 `测试-校对版.md`
 - SRT + MD：再加 `测试-校对版.srt`
-- 实现方式：读原始 md/srt → 只改明显错误 → 写入 `同目录/原名-校对版.同后缀`
+- 实现方式：把原始 md（和 srt）整份读入，通读时定位要修的错，**用一次 `Write` 整体写出**校对版到 `同目录/原名-校对版.同后缀`。不要对原始稿做几十次逐行 `Edit`——行数一多就又慢又啰嗦。行数与时间戳的对齐约束见下方「保持转录忠实」。
 
 **只修正能由上下文明确确认的错误**：同音/近音错字、明显错词或断词、中英混排中的产品名/品牌名、明显错误的数字和单位。
 
@@ -152,16 +154,21 @@ HF_ENDPOINT=https://hf-mirror.com HF_HUB_OFFLINE=0 \
 ### 其他执行规则
 
 - 视频直接传：脚本自动抽音频，无需手动转
+- 长音频/会议录音（大量静音、易幻觉）可加 `--vad`：silero VAD 切掉静音段再逐段转录，提速且减少 "you you you" 类循环幻觉；口播类高密度语音默认不开
 - 语言默认中文（`--language zh`）。内容明显是外语时（用户说明了，或从文件名/上下文能判断），主动用对应的 `--language`（如 `en`/`ja`/`yue`）；不额外弹窗问语言
 - 不要输出 TXT 格式
 - 要笔记 -> `zimu-to-note`；要烧字幕 -> `ffmpeg-usage`
 
 ## 常见问题
 
-- **FileMetadataError / LocalEntryNotFoundError**：`huggingface_hub 1.23` 在线模式对小文件 head call 的已知 bug。大文件能下、小文件（config.json 等）没存。用 curl 从 hf-mirror 补到 snapshot 目录即可：
+- **模型下载失败 / FileMetadataError / LocalEntryNotFoundError**：两个根因——① `huggingface_hub 1.22+` 下载路径重写让小文件没存（已通过 pin `==1.21.0` 规避）；② 国内网络下 hf_hub 的 HEAD→xet 链走不通（任何版本都会，症状 `LocalEntryNotFoundError`）。重跑 `install.sh` 会自动 curl 兜底；手动补则 curl 直下到 HF cache：
   ```bash
-  SNAP=~/.cache/huggingface/hub/models--mlx-community--whisper-large-v3-mlx/snapshots/*/
-  curl -sL https://hf-mirror.com/mlx-community/whisper-large-v3-mlx/resolve/main/config.json -o "$SNAP/config.json"
+  CACHE=~/.cache/huggingface/hub/models--mlx-community--whisper-large-v3-mlx
+  HASH=49e6aa286ad60c14352c404340ded53710378a11
+  SNAP="$CACHE/snapshots/$HASH"
+  mkdir -p "$SNAP" "$CACHE/refs"; printf '%s' "$HASH" > "$CACHE/refs/main"
+  curl -L -C - https://hf-mirror.com/mlx-community/whisper-large-v3-mlx/resolve/main/config.json -o "$SNAP/config.json"
+  curl -L -C - https://hf-mirror.com/mlx-community/whisper-large-v3-mlx/resolve/main/weights.npz -o "$SNAP/weights.npz"
   ```
   补完后脚本默认离线模式即可运行
 - **内存不足**：换 `--model mlx-community/whisper-large-v3-mlx-4bit`
