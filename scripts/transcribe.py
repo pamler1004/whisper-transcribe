@@ -5,7 +5,7 @@ mlx-whisper 本地语音转文字（Apple Silicon Metal GPU 加速）。
 
 用法:
   transcribe.py <音频或视频文件> [--model MODEL] [--language LANG] \
-                [--format srt|txt|all] [--output-dir DIR] [--output-name NAME]
+                [--format md|srt|all] [--output-dir DIR] [--output-name NAME]
 """
 import argparse
 import os
