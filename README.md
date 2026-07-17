@@ -1,8 +1,8 @@
 # Whisper Transcribe · macOS 本地语音转文字 Skill
 
-> Local speech-to-text for macOS Apple Silicon, packaged as a Claude Code Skill. English summary below.
+> Local speech-to-text for macOS Apple Silicon — works in both **Claude Code** and **Codex** (shared `SKILL.md` format).
 
-基于 [mlx-whisper](https://github.com/ml-explore/mlx-examples/tree/main/whisper) 的本地语音转文字，Apple Silicon 原生 **Metal GPU 加速**，默认 **large-v3** 模型。封装成 Claude Code Skill，在对话里丢个音频/视频文件就能转，完全本地、不上云。
+基于 [mlx-whisper](https://github.com/ml-explore/mlx-examples/tree/main/whisper) 的本地语音转文字，Apple Silicon 原生 **Metal GPU 加速**，默认 **large-v3** 模型。封装成一个 Skill，**Claude Code 和 Codex 都支持**（共用同一个 `SKILL.md`），在对话里丢个音频/视频文件就能转，完全本地、不上云。
 
 ## ✨ 特性
 
@@ -23,10 +23,16 @@
 
 ## 📦 安装
 
-**推荐：一行命令**（macOS Apple Silicon + [Homebrew](https://brew.sh)）：
+**推荐：一行命令**（macOS Apple Silicon + [Homebrew](https://brew.sh)）。Claude Code 和 Codex 用同一个仓库，只是 clone 的目标目录不同：
 
+**Claude Code：**
 ```bash
 git clone https://github.com/pamler1004/whisper-transcribe.git ~/.claude/skills/whisper-transcribe && ~/.claude/skills/whisper-transcribe/install.sh
+```
+
+**Codex：**
+```bash
+git clone https://github.com/pamler1004/whisper-transcribe.git ~/.codex/skills/whisper-transcribe && ~/.codex/skills/whisper-transcribe/install.sh
 ```
 
 `install.sh` 会自动装好 ffmpeg、Python 3.12、虚拟环境和所有 Python 依赖。首次转录时自动下载 large-v3 模型（约 3GB）；国内下载慢可先设镜像 `export HF_ENDPOINT=https://hf-mirror.com`。
@@ -34,8 +40,10 @@ git clone https://github.com/pamler1004/whisper-transcribe.git ~/.claude/skills/
 <details>
 <summary>手动安装（不想用脚本时）</summary>
 
+把仓库 clone 到 `~/.claude/skills/`（Claude Code）或 `~/.codex/skills/`（Codex）：
+
 ```bash
-git clone https://github.com/pamler1004/whisper-transcribe.git ~/.claude/skills/whisper-transcribe
+git clone https://github.com/pamler1004/whisper-transcribe.git ~/.claude/skills/whisper-transcribe   # Codex 把路径换成 ~/.codex/skills/
 cd ~/.claude/skills/whisper-transcribe
 python3.12 -m venv .venv
 .venv/bin/pip install -r requirements.txt
@@ -70,9 +78,9 @@ python3.12 -m venv .venv
 | `--format` | `md` / `srt` / `all` | `md` |
 | `--output-dir` | 输出目录 | 原文件同目录 |
 
-### 作为 Claude Code Skill
+### 作为 Skill（Claude Code / Codex）
 
-安装到 `~/.claude/skills/` 后，直接在 Claude Code 对话里把音频/视频文件丢进去，或说「转字幕」「转写音频」，Claude 会自动调用。
+安装到 `~/.claude/skills/`（Claude Code）或 `~/.codex/skills/`（Codex）后，直接在对话里把音频/视频文件丢进去，或说「转字幕」「转写音频」，agent 会自动调用。两个平台共用同一个 `SKILL.md`。
 
 ### 批量处理与性能
 

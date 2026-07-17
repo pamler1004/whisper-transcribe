@@ -5,7 +5,9 @@ description: "本地语音转文字（Apple Silicon Metal GPU 加速）。把音
 
 # 本地语音转文字 (mlx-whisper)
 
-基于 mlx-whisper 的本地 ASR，Apple Silicon 原生 Metal GPU 加速，默认 large-v3 模型，输出带时间戳的 SRT 字幕。环境封装在 skill 自带 venv，开箱即用。
+基于 mlx-whisper 的本地 ASR，Apple Silicon 原生 Metal GPU 加速，默认 large-v3 模型，输出逐句逐字稿 / 带时间戳 SRT。环境封装在 skill 自带 venv，开箱即用。
+
+> **同时支持 Claude Code 和 Codex**：两者都识别本 `SKILL.md`（`name` + `description` 格式通用）。装到 `~/.claude/skills/` 或 `~/.codex/skills/` 任意一个即可。下方命令会自动定位 skill 目录。
 
 ## 何时用
 
@@ -36,10 +38,11 @@ description: "本地语音转文字（Apple Silicon Metal GPU 加速）。把音
 
 ## 用法
 
+本 skill 装在 `~/.claude/skills/` 或 `~/.codex/skills/`，调用前先自动定位目录（两个平台通用）：
+
 ```bash
-~/.claude/skills/whisper-transcribe/.venv/bin/python \
-  ~/.claude/skills/whisper-transcribe/scripts/transcribe.py \
-  "/path/to/audio.mp3"
+SKILL_DIR=$(ls -d ~/.claude/skills/whisper-transcribe ~/.codex/skills/whisper-transcribe 2>/dev/null | head -1)
+"$SKILL_DIR/.venv/bin/python" "$SKILL_DIR/scripts/transcribe.py" "/path/to/audio.mp3"
 ```
 
 默认：中文、large-v3、输出 **md 逐句逐字稿**到原文件同目录。脚本已默认离线模式，无需手动设环境变量。
@@ -64,9 +67,8 @@ description: "本地语音转文字（Apple Silicon Metal GPU 加速）。把音
 视频文件直接传入，脚本自动用 ffmpeg 抽成 16kHz 单声道 wav：
 
 ```bash
-~/.claude/skills/whisper-transcribe/.venv/bin/python \
-  ~/.claude/skills/whisper-transcribe/scripts/transcribe.py \
-  "/path/to/video.mp4" --format all
+SKILL_DIR=$(ls -d ~/.claude/skills/whisper-transcribe ~/.codex/skills/whisper-transcribe 2>/dev/null | head -1)
+"$SKILL_DIR/.venv/bin/python" "$SKILL_DIR/scripts/transcribe.py" "/path/to/video.mp4" --format all
 ```
 
 ### 批量转写
@@ -84,9 +86,9 @@ description: "本地语音转文字（Apple Silicon Metal GPU 加速）。把音
 
 切换模型（首次需在线下载）：
 ```bash
+SKILL_DIR=$(ls -d ~/.claude/skills/whisper-transcribe ~/.codex/skills/whisper-transcribe 2>/dev/null | head -1)
 HF_ENDPOINT=https://hf-mirror.com HF_HUB_OFFLINE=0 \
-  ~/.claude/skills/whisper-transcribe/.venv/bin/python \
-  ~/.claude/skills/whisper-transcribe/scripts/transcribe.py \
+  "$SKILL_DIR/.venv/bin/python" "$SKILL_DIR/scripts/transcribe.py" \
   input.mp3 --model mlx-community/whisper-large-v3-turbo-mlx
 ```
 
@@ -102,7 +104,7 @@ HF_ENDPOINT=https://hf-mirror.com HF_HUB_OFFLINE=0 \
 当用户**已经提供音频/视频文件**，并明确要求转录/转字幕时，必须按下面顺序执行：
 
 1. **确认文件存在**：用 `ls` 或等效只读方式检查文件路径
-2. **在转录前询问格式**：文件确认存在后、**执行转录脚本前**，必须调用 `AskUserQuestion`；不得默认选格式，也不要用纯文本提问
+2. **在转录前询问格式**：文件确认存在后、**执行转录脚本前**，必须先问用户导出格式，不得默认。Claude Code 用 `AskUserQuestion` 工具（JSON 见下）；Codex 或其他 agent 直接用文本提问并等用户回答。两个选项：只要 MD / SRT + MD。
 
    ```json
    {
