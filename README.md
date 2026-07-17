@@ -56,14 +56,24 @@ python3.12 -m venv .venv
 
 ## 🎯 用法
 
-### 命令行
+### 在对话里直接用（推荐）
+
+装好后，把音频 / 视频文件丢进对话，或说「转字幕」「转写这段音频」「生成 SRT」，agent 自动调用本 skill，流程：
+
+1. 先问你**导出格式**（只要 MD / SRT + MD）和**是否校对**
+2. 转录（默认中文 + large-v3；视频自动抽音频），输出到原文件旁边
+3. 选了校对就再通读一遍修错字、另存「-校对版」；不校对只出原始稿
+
+长音频 / 会议录音静音多、易幻觉时，对话里说一句「开 VAD 去静音」即可。两个平台共用同一个 `SKILL.md`。
+
+### 命令行直调（高级）
+
+<details>
+<summary>点开看脚本参数与示例</summary>
 
 ```bash
-# 默认：中文 + large-v3 + 输出 md 逐字稿到原文件旁边
+# 默认：中文 + large-v3 + md 逐字稿到原文件旁边
 .venv/bin/python scripts/transcribe.py /path/to/audio.mp3
-
-# 视频直接传（自动抽音频）
-.venv/bin/python scripts/transcribe.py /path/to/video.mp4
 
 # 同时输出 md + srt
 .venv/bin/python scripts/transcribe.py audio.mp3 --format all
@@ -71,7 +81,7 @@ python3.12 -m venv .venv
 # 指定语言
 .venv/bin/python scripts/transcribe.py audio.mp3 --language en
 
-# 长音频/会议录音去静音（减少幻觉、提速）
+# 长音频/会议录音去静音
 .venv/bin/python scripts/transcribe.py meeting.mp3 --vad
 ```
 
@@ -83,9 +93,7 @@ python3.12 -m venv .venv
 | `--output-dir` | 输出目录 | 原文件同目录 |
 | `--vad` | silero VAD 去静音（长音频/会议推荐） | 关 |
 
-### 作为 Skill（Claude Code / Codex）
-
-安装到 `~/.claude/skills/`（Claude Code）或 `~/.codex/skills/`（Codex）后，直接在对话里把音频/视频文件丢进去，或说「转字幕」「转写音频」，agent 会自动调用。两个平台共用同一个 `SKILL.md`。
+</details>
 
 ### 批量处理与性能
 
