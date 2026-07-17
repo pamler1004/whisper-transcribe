@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 mlx-whisper 本地语音转文字（Apple Silicon Metal GPU 加速）。
-默认 large-v3 模型，输出带时间戳的 SRT 字幕 / 纯文本。
+默认 large-v3 模型，输出逐句分行的 Markdown 逐字稿 / 带时间戳的 SRT 字幕。
 
 用法:
   transcribe.py <音频或视频文件> [--model MODEL] [--language LANG] \
@@ -22,13 +22,26 @@ VIDEO_EXTS = {".mp4", ".mov", ".mkv", ".avi", ".flv", ".webm", ".m4v", ".wmv", "
 
 def video_to_audio(video_path: str) -> str:
     """ffmpeg 抽成 16kHz 单声道 wav（whisper 最佳输入，避免重采样）。"""
-    tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
-    tmp.close()
-    subprocess.run(
-        ["ffmpeg", "-y", "-i", video_path, "-vn", "-ac", "1", "-ar", "16000", tmp.name],
-        check=True, capture_output=True,
-    )
-    return tmp.name
+    fd, tmp_path = tempfile.mkstemp(suffix=".wav")
+    os.close(fd)
+    try:
+        subprocess.run(
+            ["ffmpeg", "-y", "-i", video_path, "-vn", "-ac", "1", "-ar", "16000", tmp_path],
+            check=True, capture_output=True,
+        )
+    except subprocess.CalledProcessError as e:
+        # 失败时清理临时文件，并把 ffmpeg 的 stderr 暴露给用户（默认会被吞掉）
+        os.unlink(tmp_path)
+        stderr = e.stderr.decode("utf-8", "ignore").strip() if e.stderr else ""
+        tail = "\n".join(stderr.splitlines()[-8:])
+        raise RuntimeError(
+            f"ffmpeg 抽音频失败（确认已装 ffmpeg 且文件可读）:\n{tail}"
+        ) from None
+    except BaseException:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+        raise
+    return tmp_path
 
 
 def format_ts(seconds: float) -> str:
@@ -66,6 +79,9 @@ def main():
     if not input_path.exists():
         print(f"❌ 文件不存在: {input_path}", file=sys.stderr)
         sys.exit(1)
+    if not input_path.is_file():
+        print(f"❌ 路径不是文件（可能是目录）: {input_path}", file=sys.stderr)
+        sys.exit(1)
 
     output_dir = Path(args.output_dir) if args.output_dir else input_path.parent
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -75,8 +91,12 @@ def main():
     temp_audio = None
     if input_path.suffix.lower() in VIDEO_EXTS:
         print(f"🎬 抽取音频: {input_path.name}", file=sys.stderr)
-        audio_path = video_to_audio(str(input_path))
-        temp_audio = audio_path
+        try:
+            audio_path = video_to_audio(str(input_path))
+            temp_audio = audio_path
+        except RuntimeError as e:
+            print(f"❌ {e}", file=sys.stderr)
+            sys.exit(1)
 
     # 默认离线：模型已在 HF cache。huggingface_hub 1.23 在线模式对小文件 head call 有
     # FileMetadataError bug。换新模型首次下载时：
