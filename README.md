@@ -2,7 +2,7 @@
 
 > Local speech-to-text for macOS Apple Silicon — works in both **Claude Code** and **Codex** (shared `SKILL.md` format).
 
-基于 [mlx-whisper](https://github.com/ml-explore/mlx-examples/tree/main/whisper) 的本地语音转文字，Apple Silicon 原生 **Metal GPU 加速**，默认 **large-v3** 模型。封装成一个 Skill，**Claude Code 和 Codex 都支持**（共用同一个 `SKILL.md`），在对话里丢个音频/视频文件就能转，完全本地、不上云。
+基于 [mlx-whisper](https://github.com/ml-explore/mlx-examples/tree/main/whisper) 的本地语音转文字，Apple Silicon 原生 **Metal GPU 加速**，默认 **large-v3** 模型。封装成一个 Skill在对话里丢个音频/视频文件就能转，完全本地、不上云。
 
 ## ✨ 特性
 
