@@ -1,5 +1,5 @@
 ---
-name: leon-whisper-transcribe
+name: whisper-transcribe
 description: "音视频转文字的默认主力（本地 mlx-whisper + large-v3，Apple Silicon Metal 加速，无需联网）。把音频/视频文件转成逐句 Markdown 逐字稿或带时间戳 SRT 字幕。当用户提到「转文字」「转字幕」「生成 SRT」「转录音频/视频」「语音转文字」「提取视频/音频里的文字」「whisper 转写」时使用。"
 ---
 
@@ -17,7 +17,7 @@ description: "音视频转文字的默认主力（本地 mlx-whisper + large-v3�
 
 ## 与其他技能的衔接
 
-- 转出的 SRT 要整理成笔记 -> 衔接 `leon-zimu-to-note` 技能
+- 转出的 SRT 要整理成笔记 -> 衔接 `zimu-to-note` 技能
 - 要下载视频再转写 -> 先 `video-download`，再本技能
 - 转出 SRT 要烧录到视频 -> `ffmpeg-usage` 的字幕烧录命令
 
@@ -41,14 +41,14 @@ description: "音视频转文字的默认主力（本地 mlx-whisper + large-v3�
 本 skill 装在 `~/.claude/skills/` 或 `~/.codex/skills/`，调用前先自动定位目录（两个平台通用）：
 
 ```bash
-SKILL_DIR=$(ls -d ~/.agents/skills/leon-whisper-transcribe ~/.claude/skills/leon-whisper-transcribe ~/.codex/skills/leon-whisper-transcribe ~/.claude/skills/whisper-transcribe ~/.codex/skills/whisper-transcribe 2>/dev/null | head -1)
+SKILL_DIR=$(ls -d ~/.agents/skills/whisper-transcribe ~/.claude/skills/whisper-transcribe ~/.codex/skills/whisper-transcribe 2>/dev/null | head -1)
 "$SKILL_DIR/.venv/bin/python" "$SKILL_DIR/scripts/transcribe.py" "/path/to/audio.mp3"
 ```
 
 默认：中文、large-v3、输出 **md 逐句逐字稿**到原文件同目录。脚本已默认离线模式，无需手动设环境变量。
 
 输出格式说明：
-- `md`（默认）：逐句分行逐字稿，每行一句，无时间戳无序号——适合口播稿整理、衔接 `leon-zimu-to-note` 转笔记
+- `md`（默认）：逐句分行逐字稿，每行一句，无时间戳无序号——适合口播稿整理、衔接 `zimu-to-note` 转笔记
 - `srt`：带时间戳的字幕，适合直接配视频字幕
 - `all`：md + srt 都输出
 
@@ -68,7 +68,7 @@ SKILL_DIR=$(ls -d ~/.agents/skills/leon-whisper-transcribe ~/.claude/skills/leon
 视频文件直接传入，脚本自动用 ffmpeg 抽成 16kHz 单声道 wav：
 
 ```bash
-SKILL_DIR=$(ls -d ~/.agents/skills/leon-whisper-transcribe ~/.claude/skills/leon-whisper-transcribe ~/.codex/skills/leon-whisper-transcribe ~/.claude/skills/whisper-transcribe ~/.codex/skills/whisper-transcribe 2>/dev/null | head -1)
+SKILL_DIR=$(ls -d ~/.agents/skills/whisper-transcribe ~/.claude/skills/whisper-transcribe ~/.codex/skills/whisper-transcribe 2>/dev/null | head -1)
 "$SKILL_DIR/.venv/bin/python" "$SKILL_DIR/scripts/transcribe.py" "/path/to/video.mp4" --format all
 ```
 
@@ -87,7 +87,7 @@ SKILL_DIR=$(ls -d ~/.agents/skills/leon-whisper-transcribe ~/.claude/skills/leon
 
 切换模型（首次需在线下载）：
 ```bash
-SKILL_DIR=$(ls -d ~/.agents/skills/leon-whisper-transcribe ~/.claude/skills/leon-whisper-transcribe ~/.codex/skills/leon-whisper-transcribe ~/.claude/skills/whisper-transcribe ~/.codex/skills/whisper-transcribe 2>/dev/null | head -1)
+SKILL_DIR=$(ls -d ~/.agents/skills/whisper-transcribe ~/.claude/skills/whisper-transcribe ~/.codex/skills/whisper-transcribe 2>/dev/null | head -1)
 HF_ENDPOINT=https://hf-mirror.com HF_HUB_OFFLINE=0 \
   "$SKILL_DIR/.venv/bin/python" "$SKILL_DIR/scripts/transcribe.py" \
   input.mp3 --model mlx-community/whisper-large-v3-turbo-mlx
@@ -167,7 +167,7 @@ HF_ENDPOINT=https://hf-mirror.com HF_HUB_OFFLINE=0 \
 - 长音频/会议录音（大量静音、易幻觉）可加 `--vad`：silero VAD 切掉静音段再逐段转录，提速且减少 "you you you" 类循环幻觉；口播类高密度语音默认不开
 - 语言默认中文（`--language zh`）。内容明显是外语时（用户说明了，或从文件名/上下文能判断），主动用对应的 `--language`（如 `en`/`ja`/`yue`）；不额外弹窗问语言
 - 不要输出 TXT 格式
-- 要笔记 -> `leon-zimu-to-note`；要烧字幕 -> `ffmpeg-usage`
+- 要笔记 -> `zimu-to-note`；要烧字幕 -> `ffmpeg-usage`
 
 ## 常见问题
 

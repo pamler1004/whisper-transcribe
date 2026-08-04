@@ -1,0 +1,19 @@
+{
+  "skill_name": "whisper-transcribe",
+  "evals": [
+    {
+      "id": "transcribe-format-choice",
+      "prompt": "用户上传一段中文会议音频，希望得到逐句 Markdown，并可选择是否输出 SRT。",
+      "must": [
+        "确认音频或视频输入，并先询问或遵循用户选择的输出格式与是否校对",
+        "默认使用本地 mlx-whisper 和中文 large-v3，长静音会议可说明 VAD 选项",
+        "逐个文件处理并报告结果，失败文件不应抹掉已完成的输出"
+      ],
+      "must_not": [
+        "没有音视频输入时伪造转录文本或 SRT 时间戳",
+        "默认并发启动多个 large-v3 实例或把音频上传到云端"
+      ],
+      "notes": "格式与本地处理边界夹具；validator 只检查 JSON 与断言字段，不自动调用模型。"
+    }
+  ]
+}

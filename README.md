@@ -28,12 +28,12 @@
 
 **Claude Code：**
 ```bash
-git clone https://github.com/pamler1004/whisper-transcribe.git ~/.claude/skills/leon-whisper-transcribe && ~/.claude/skills/leon-whisper-transcribe/install.sh
+git clone https://github.com/pamler1004/whisper-transcribe.git ~/.claude/skills/whisper-transcribe && ~/.claude/skills/whisper-transcribe/install.sh
 ```
 
 **Codex：**
 ```bash
-git clone https://github.com/pamler1004/whisper-transcribe.git ~/.codex/skills/leon-whisper-transcribe && ~/.codex/skills/leon-whisper-transcribe/install.sh
+git clone https://github.com/pamler1004/whisper-transcribe.git ~/.codex/skills/whisper-transcribe && ~/.codex/skills/whisper-transcribe/install.sh
 ```
 
 `install.sh` 会自动装好 ffmpeg、Python 3.12、虚拟环境和所有依赖，并**预下载 large-v3 模型（约 3GB）+ 离线加载验证**——跑完即可直接转录。下载走三级 fallback（huggingface.co 直连 → hf-mirror → curl 兜底），国内网络也能成；不想在安装时下模型可用 `SKIP_MODEL_DOWNLOAD=1 bash install.sh`。
@@ -46,8 +46,8 @@ git clone https://github.com/pamler1004/whisper-transcribe.git ~/.codex/skills/l
 把仓库 clone 到 `~/.claude/skills/`（Claude Code）或 `~/.codex/skills/`（Codex）：
 
 ```bash
-git clone https://github.com/pamler1004/whisper-transcribe.git ~/.claude/skills/leon-whisper-transcribe   # Codex 把路径换成 ~/.codex/skills/
-cd ~/.claude/skills/leon-whisper-transcribe
+git clone https://github.com/pamler1004/whisper-transcribe.git ~/.claude/skills/whisper-transcribe   # Codex 把路径换成 ~/.codex/skills/
+cd ~/.claude/skills/whisper-transcribe
 python3.12 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 ```

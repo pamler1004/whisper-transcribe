@@ -1,0 +1,4 @@
+interface:
+  display_name: "Whisper Transcribe"
+  short_description: "在本地把音视频转成逐字稿或 SRT"
+  default_prompt: "Use $whisper-transcribe to transcribe the provided audio or video locally into Markdown or SRT."
