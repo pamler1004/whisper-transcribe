@@ -18,7 +18,6 @@ description: "音视频转文字的默认主力（本地 mlx-whisper + large-v3�
 ## 与其他技能的衔接
 
 - 转出的 SRT 要整理成笔记 -> 衔接 `leon-zimu-to-note` 技能
-- 只要纯文本、不需时间戳、且 newmax SenseVoice 服务(127.0.0.1:18923)在跑 -> 那个更快（参考 `ffmpeg-usage` 文档末尾）；但该服务常未启动且不出 SRT，默认用本技能
 - 要下载视频再转写 -> 先 `video-download`，再本技能
 - 转出 SRT 要烧录到视频 -> `ffmpeg-usage` 的字幕烧录命令
 
