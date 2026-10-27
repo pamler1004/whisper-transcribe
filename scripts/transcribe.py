@@ -20,6 +20,12 @@ DEFAULT_MODEL = "mlx-community/whisper-large-v3-mlx"
 VIDEO_EXTS = {".mp4", ".mov", ".mkv", ".avi", ".flv", ".webm", ".m4v", ".wmv", ".ts", ".mts"}
 
 
+class OutputWriteError(Exception):
+    def __init__(self, message, written_paths=()):
+        super().__init__(message)
+        self.written_paths = tuple(written_paths)
+
+
 def video_to_audio(video_path: str) -> str:
     """ffmpeg 抽成 16kHz 单声道 wav（whisper 最佳输入，避免重采样）。"""
     fd, tmp_path = tempfile.mkstemp(suffix=".wav")
@@ -61,6 +67,53 @@ def segments_to_srt(segments) -> str:
         lines.append(seg["text"].strip())
         lines.append("")
     return "\n".join(lines)
+
+
+def write_outputs(output_dir: Path, base_name: str, output_format: str, segments):
+    """Exclusively create requested outputs, retrying only before any write succeeds.
+
+    For `all`, both files share one basename. If the second create races with another
+    writer, retain and report this run's first output; never delete any path.
+    """
+    outputs = {}
+    if output_format in ("md", "all"):
+        outputs[".md"] = "\n".join(s["text"].strip() for s in segments if s["text"].strip()) + "\n"
+    if output_format in ("srt", "all"):
+        outputs[".srt"] = segments_to_srt(segments)
+
+    candidate = base_name
+    suffix = 2
+    while True:
+        paths = [output_dir / f"{candidate}{extension}" for extension in outputs]
+        if any(path.exists() for path in paths):
+            candidate = f"{base_name}-{suffix}"
+            suffix += 1
+            continue
+        created = []
+        for (extension, content), path in zip(outputs.items(), paths):
+            try:
+                with path.open("x", encoding="utf-8", newline="") as f:
+                    created.append(path)
+                    f.write(content)
+            except FileExistsError as e:
+                if created:
+                    raise OutputWriteError(
+                        f"并发写入造成 {path} 冲突；本次已写文件保留，请检查 {', '.join(map(str, created))}",
+                        created,
+                    ) from e
+                # No output from this call exists yet, so move to a fresh candidate.
+                break
+            except OSError as e:
+                if created:
+                    raise OutputWriteError(
+                        f"写入 {path} 失败；本次已写文件保留，请检查 {', '.join(map(str, created))}",
+                        created,
+                    ) from e
+                raise OutputWriteError(f"无法安全写入 {path}: {e}") from e
+        else:
+            return candidate, created
+        candidate = f"{base_name}-{suffix}"
+        suffix += 1
 
 
 def transcribe_with_vad(audio_path: str, model: str, language):
@@ -188,16 +241,15 @@ def main():
 
     segments = result.get("segments", [])
 
-    if args.format in ("md", "all"):
-        # 逐句分行（口播逐字稿格式）：每个 segment 一行，无时间戳无序号
-        md_content = "\n".join(s["text"].strip() for s in segments if s["text"].strip())
-        md_path = output_dir / f"{base_name}.md"
-        md_path.write_text(md_content + "\n", encoding="utf-8")
-        print(f"✅ MD: {md_path}", file=sys.stderr)
-    if args.format in ("srt", "all"):
-        srt_path = output_dir / f"{base_name}.srt"
-        srt_path.write_text(segments_to_srt(segments), encoding="utf-8")
-        print(f"✅ SRT: {srt_path}", file=sys.stderr)
+    try:
+        actual_name, output_paths = write_outputs(output_dir, base_name, args.format, segments)
+    except OutputWriteError as e:
+        print(f"❌ {e}（没有删除或覆盖文件）", file=sys.stderr)
+        sys.exit(1)
+    if actual_name != base_name:
+        print(f"⚠️ 输出文件名冲突，已改用：{actual_name}", file=sys.stderr)
+    for path in output_paths:
+        print(f"✅ {path.suffix[1:].upper()}: {path}", file=sys.stderr)
 
 
 if __name__ == "__main__":
